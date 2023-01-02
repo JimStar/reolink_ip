@@ -1341,7 +1341,7 @@ class Host:
             except Exception as e:  # pylint: disable=bare-except
                 _LOGGER.error("Host %s:%s failed mapping JSON data: %s, traceback:\n%s\n", self._host, self._port, e, traceback.format_exc())
                 continue
-    #enfof map_host_json_response()
+    #endof map_host_json_response()
 
 
     def map_channel_json_response(self, json_data, channel: int):
