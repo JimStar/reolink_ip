@@ -188,9 +188,11 @@ class Host:
         self._daynight_state: dict[int, str]                  = dict()
         self._backlight_state: dict[int, str]                 = dict()
         self._ai_detection_states: dict[int, dict[str, bool]] = dict()
+        self._visitor_states: dict[int, bool]                 = dict()
 
         ##############################################################################
         # API-versions of commands
+        self._api_getevents_supported: bool         = False
         self._api_version_getemail: Optional[int]   = None
         self._api_version_getrec: Optional[int]     = None
         self._api_version_getftp: Optional[int]     = None
@@ -956,7 +958,8 @@ class Host:
         
         channels_param = {"channel": 0}
         ch_body = [
-            {"cmd": "GetAiState", "action": 0, "param": channels_param}  # to capture AI capabilities
+            {"cmd": "GetAiState", "action": 0, "param": channels_param},  # to capture AI capabilities
+            {"cmd": "GetEvents", "action": 0, "param": channels_param}
         ]
 
         for channel in self._channels:
@@ -979,6 +982,11 @@ class Host:
                 if x["cmd"] == cmd:
                     return True
             return False
+
+        if check_command_exists("GetEvents"):
+            self._api_getevents_supported = True
+        else:
+            self._api_getevents_supported = False
 
         if self._api_version_getemail >= 1:
             if not check_command_exists("GetEmailV20"):
@@ -1053,12 +1061,15 @@ class Host:
 
 
     async def get_all_motion_states(self, channel: int) -> Optional[bool]:
-        """Fetch All motions states at once (regular + AI)."""
+        """Fetch All motions states at once (regular + AI + visitor)."""
         if channel not in self._channels:
             return None
 
-        body = [{"cmd": "GetMdState", "action": 0, "param": {"channel": channel}},
-                {"cmd": "GetAiState", "action": 0, "param": {"channel": channel}}]
+        if self._api_getevents_supported:
+            body = [{"cmd": "GetEvents", "action": 0, "param": {"channel": channel}}]
+        else:
+            body = [{"cmd": "GetMdState", "action": 0, "param": {"channel": channel}},
+                    {"cmd": "GetAiState", "action": 0, "param": {"channel": channel}}]
 
         try:
             json_data = await self.send(body, expected_content_type = 'json')
@@ -1082,8 +1093,11 @@ class Host:
     async def get_all_motion_states_all_channels(self) -> bool:
         """Fetch All motions states of all channels at once (regular + AI)."""
         channels_param = {"channel": 0}
-        ch_body = [{"cmd": "GetMdState", "action": 0, "param": channels_param},
-                   {"cmd": "GetAiState", "action": 0, "param": channels_param}]
+        if self._api_getevents_supported:
+            ch_body = [{"cmd": "GetEvents", "action": 0, "param": channels_param}]
+        else:
+            ch_body = [{"cmd": "GetMdState", "action": 0, "param": channels_param},
+                       {"cmd": "GetAiState", "action": 0, "param": channels_param}]
         
         body        = []
         channels    = []
@@ -1423,7 +1437,26 @@ class Host:
                 if data["code"] == 1:  #Error, like "ability error"
                     continue
 
-                if data["cmd"] == "GetMdState":
+                if data["cmd"] == "GetEvents":
+                    response_channel = data["value"]["channel"]
+                    if "ai" in data["value"]:
+                        self._is_ia_enabled[channel]        = True
+                        self._ai_detection_states[channel]  = {}
+                        self._ai_detection_support[channel] = {}
+                        
+                        for key, value in data["value"]["ai"].items():
+                            supported: bool = value.get("support", 0) == 1
+                            self._ai_detection_states[channel][key] = supported and value.get("alarm_state", 0) == 1
+                            self._ai_detection_support[channel][key] = supported
+                    if "md" in data["value"]:
+                        self._motion_detection_states[channel] = data["value"]["md"]["alarm_state"] == 1
+                    if "visitor" in data["value"]:
+                        value = data["value"]["visitor"]
+                        supported: bool = value.get("support", 0) == 1
+                        self._visitor_states[channel] = supported and value.get("alarm_state", 0) == 1
+                        self._is_doorbell_enabled[channel] = supported
+
+                elif data["cmd"] == "GetMdState":
                     # No "channel" property returned here.
                     #response_channel = data["value"]["channel"]
                     self._motion_detection_states[channel] = data["value"]["state"] == 1
