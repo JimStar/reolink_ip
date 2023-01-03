@@ -1,5 +1,6 @@
 """ Reolink NVR/camera network API """
 
+import copy
 import json
 import logging
 import traceback
@@ -753,28 +754,28 @@ class Host:
     async def get_state(self, cmd: str) -> bool:
         alarm_param     = {"channel": 0, "type": "md"}
         channels_param  = {"channel": 0}
-        body            = None
-
+        ch_body         = None
+        
         if cmd == "GetEnc":
-            body = [{"cmd": "GetEnc", "action": 0, "param": channels_param}]
+            ch_body = [{"cmd": "GetEnc", "action": 0, "param": channels_param}]
         elif cmd == "GetIsp":
-            body = [{"cmd": "GetIsp", "action": 0, "param": channels_param}]
+            ch_body = [{"cmd": "GetIsp", "action": 0, "param": channels_param}]
         elif cmd == "GetIrLights":
-            body = [{"cmd": "GetIrLights", "action": 0, "param": channels_param}]
+            ch_body = [{"cmd": "GetIrLights", "action": 0, "param": channels_param}]
         elif cmd == "GetPowerLed":
-            body = [{"cmd": "GetPowerLed", "action": 0, "param": channels_param}]
+            ch_body = [{"cmd": "GetPowerLed", "action": 0, "param": channels_param}]
         elif cmd == "GetWhiteLed":
-            body = [{"cmd": "GetWhiteLed", "action": 0, "param": channels_param}]
+            ch_body = [{"cmd": "GetWhiteLed", "action": 0, "param": channels_param}]
         elif cmd == "GetPtzPreset":
-            body = [{"cmd": "GetPtzPreset", "action": 0, "param": channels_param}]
+            ch_body = [{"cmd": "GetPtzPreset", "action": 0, "param": channels_param}]
         elif cmd == "GetAutoFocus":
-            body = [{"cmd": "GetAutoFocus", "action": 0, "param": channels_param}]
+            ch_body = [{"cmd": "GetAutoFocus", "action": 0, "param": channels_param}]
         elif cmd == "GetZoomFocus":
-            body = [{"cmd": "GetZoomFocus", "action": 0, "param": channels_param}]
+            ch_body = [{"cmd": "GetZoomFocus", "action": 0, "param": channels_param}]
         elif cmd == "GetOsd":
-            body = [{"cmd": "GetOsd", "action": 0, "param": channels_param}]
+            ch_body = [{"cmd": "GetOsd", "action": 0, "param": channels_param}]
         elif cmd == "GetAlarm":
-            body = [
+            ch_body = [
                 {
                     "cmd": "GetAlarm",
                     "action": 0,
@@ -783,45 +784,51 @@ class Host:
             ]
         elif cmd == "GetEmail" or cmd == "GetEmailV20":
             if self._api_version_getemail == 0:
-                body = [{"cmd": "GetEmail", "action": 0, "param": channels_param}]
+                ch_body = [{"cmd": "GetEmail", "action": 0, "param": channels_param}]
             else:
-                body = [{"cmd": "GetEmailV20", "action": 0, "param": channels_param}]
+                ch_body = [{"cmd": "GetEmailV20", "action": 0, "param": channels_param}]
         elif cmd == "GetPush" or cmd == "GetPushV20":
             if self._api_version_getpush == 0:
-                body = [{"cmd": "GetPush", "action": 0, "param": channels_param}]
+                ch_body = [{"cmd": "GetPush", "action": 0, "param": channels_param}]
             else:
-                body = [{"cmd": "GetPushV20", "action": 0, "param": channels_param}]
+                ch_body = [{"cmd": "GetPushV20", "action": 0, "param": channels_param}]
         elif cmd == "GetFtp" or cmd == "GetFtpV20":
             if self._api_version_getftp == 0:
-                body = [{"cmd": "GetFtp", "action": 0, "param": channels_param}]
+                ch_body = [{"cmd": "GetFtp", "action": 0, "param": channels_param}]
             else:
-                body = [{"cmd": "GetFtpV20", "action": 0, "param": channels_param}]
+                ch_body = [{"cmd": "GetFtpV20", "action": 0, "param": channels_param}]
         elif cmd == "GetRec" or cmd == "GetRecV20":
             if self._api_version_getrec == 0:
-                body = [{"cmd": "GetRec", "action": 0, "param": channels_param}]
+                ch_body = [{"cmd": "GetRec", "action": 0, "param": channels_param}]
             else:
-                body = [{"cmd": "GetRecV20", "action": 0, "param": channels_param}]
+                ch_body = [{"cmd": "GetRecV20", "action": 0, "param": channels_param}]
         elif cmd == "GetAudioAlarm" or cmd == "GetAudioAlarmV20":
             if self._api_version_getalarm == 0:
-                body = [{"cmd": "GetAudioAlarm", "action": 0, "param": channels_param}]
+                ch_body = [{"cmd": "GetAudioAlarm", "action": 0, "param": channels_param}]
             else:
-                body = [{"cmd": "GetAudioAlarmV20", "action": 0, "param": channels_param}]
+                ch_body = [{"cmd": "GetAudioAlarmV20", "action": 0, "param": channels_param}]
 
-        if body is not None:
-            for c in self._channels:
-                alarm_param["channel"]      = c
-                channels_param["channel"]   = c
+        if ch_body is not None:
+            body        = []
+            channels    = []
+            
+            for channel in self._channels:
+                channels_param["channel"] = alarm_param["channel"] = channel
+            
+                body.extend(copy.deepcopy(ch_body))
+                channels.extend([channel])
 
+            if len(body) > 0:
                 try:
                     json_data = await self.send(body, expected_content_type = 'json')
                 except InvalidContentTypeError:
-                    _LOGGER.error("Host: %s:%s: error translating channel-state response for channel %s.", self._host, self._port, c)
+                    _LOGGER.error("Host: %s:%s: error translating channels-states response.", self._host, self._port)
                     return False
                 if json_data is None:
-                    _LOGGER.error("Host: %s:%s: error obtaining channel-state response for channel %s.", self._host, self._port, c)
+                    _LOGGER.error("Host: %s:%s: error obtaining channels-states response.", self._host, self._port)
                     return False
 
-                self.map_channel_json_response(json_data, c)
+                self.map_channels_json_response(json_data, channels)
         return True
     #endof get_state()
 
@@ -830,7 +837,7 @@ class Host:
         alarm_param     = {"channel": 0, "type": "md"}
         channels_param  = {"channel": 0}
 
-        body = [
+        ch_body = [
             {"cmd": "GetEnc", "action": 0, "param": channels_param},
             {"cmd": "GetIsp", "action": 0, "param": channels_param},
             {"cmd": "GetIrLights", "action": 0, "param": channels_param},
@@ -848,44 +855,48 @@ class Host:
         ]
 
         if self._api_version_getemail >= 1:
-            body.append({"cmd": "GetEmailV20", "action": 0, "param": channels_param})
+            ch_body.append({"cmd": "GetEmailV20", "action": 0, "param": channels_param})
         else:
-            body.append({"cmd": "GetEmail", "action": 0, "param": channels_param})
+            ch_body.append({"cmd": "GetEmail", "action": 0, "param": channels_param})
 
         if self._api_version_getpush >= 1:
-            body.append({"cmd": "GetPushV20", "action": 0, "param": channels_param})
+            ch_body.append({"cmd": "GetPushV20", "action": 0, "param": channels_param})
         else:
-            body.append({"cmd": "GetPush", "action": 0, "param": channels_param})
+            ch_body.append({"cmd": "GetPush", "action": 0, "param": channels_param})
 
         if self._api_version_getftp >= 1:
-            body.append({"cmd": "GetFtpV20", "action": 0, "param": channels_param})
+            ch_body.append({"cmd": "GetFtpV20", "action": 0, "param": channels_param})
         else:
-            body.append({"cmd": "GetFtp", "action": 0, "param": channels_param})
+            ch_body.append({"cmd": "GetFtp", "action": 0, "param": channels_param})
 
         if self._api_version_getrec >= 1:
-            body.append({"cmd": "GetRecV20", "action": 0, "param": channels_param})
+            ch_body.append({"cmd": "GetRecV20", "action": 0, "param": channels_param})
         else:
-            body.append({"cmd": "GetRec", "action": 0, "param": channels_param})
+            ch_body.append({"cmd": "GetRec", "action": 0, "param": channels_param})
 
         if self._api_version_getalarm >= 1:
-            body.append({"cmd": "GetAudioAlarmV20", "action": 0, "param": channels_param})
+            ch_body.append({"cmd": "GetAudioAlarmV20", "action": 0, "param": channels_param})
         else:
-            body.append({"cmd": "GetAudioAlarm", "action": 0, "param": channels_param})
+            ch_body.append({"cmd": "GetAudioAlarm", "action": 0, "param": channels_param})
 
-        for c in self._channels:
-            alarm_param["channel"]      = c
-            channels_param["channel"]   = c
+        body        = []
+        channels    = []
+        for channel in self._channels:
+            channels_param["channel"] = alarm_param["channel"] = channel
+            
+            body.extend(copy.deepcopy(ch_body))
+            channels.extend([channel] * len(ch_body))
 
-            try:
-                json_data = await self.send(body, expected_content_type = 'json')
-            except InvalidContentTypeError:
-                _LOGGER.error("Host: %s:%s: error translating channel-state response for channel %s.", self._host, self._port, c)
-                return False
-            if json_data is None:
-                _LOGGER.error("Host: %s:%s: error obtaining channel-state response for channel %s.", self._host, self._port, c)
-                return False
+        try:
+            json_data = await self.send(body, expected_content_type = 'json')
+        except InvalidContentTypeError:
+            _LOGGER.error("Host: %s:%s: error translating channels-states response.", self._host, self._port)
+            return False
+        if json_data is None:
+            _LOGGER.error("Host: %s:%s: error obtaining channels-states response.", self._host, self._port)
+            return False
 
-            self.map_channel_json_response(json_data, c)
+        self.map_channels_json_response(json_data, channels)
         return True
     #endof get_states()
 
@@ -919,66 +930,77 @@ class Host:
 
         self.map_host_json_response(json_data)
 
+        body        = []
+        channels    = []
+
+        # Checking API versions (because Reolink dev quality sucks big time we cannot fully trust GetAbility).
+        # Let's assume all channels of an NVR or multichannel-camera always have the same versions of commands. Not sure though...
+        first_channel = self._channels[0]
+        if self._api_version_getemail >= 1:
+            body.append({"cmd": "GetEmailV20", "action": 0, "param": {"channel": first_channel}})
+            channels.append(self._channels[0])
+        if self._api_version_getpush >= 1:
+            body.append({"cmd": "GetPushV20", "action": 0, "param": {"channel": first_channel}})
+            channels.append(self._channels[0])
+        if self._api_version_getftp >= 1:
+            body.append({"cmd": "GetFtpV20", "action": 0, "param": {"channel": first_channel}})
+            channels.append(self._channels[0])
+        if self._api_version_getrec >= 1:
+            body.append({"cmd": "GetRecV20", "action": 0, "param": {"channel": first_channel}})
+            channels.append(self._channels[0])
+        if self._api_version_getalarm >= 1:
+            body.append({"cmd": "GetAudioAlarmV20", "action": 0, "param": {"channel": first_channel}})
+            channels.append(self._channels[0])
+
+        versions_block_len = len(body)
+        
         channels_param = {"channel": 0}
-        channel_level_body = [
+        ch_body = [
             {"cmd": "GetAiState", "action": 0, "param": channels_param}  # to capture AI capabilities
         ]
-        # checking API versions (because Reolink dev quality sucks big time we cannot fully trust GetAbility)
+
+        for channel in self._channels:
+            channels_param["channel"] = channel
+            
+            body.extend(copy.deepcopy(ch_body))
+            channels.extend([channel] * len(ch_body))
+
+        try:
+            json_data = await self.send(body, expected_content_type = 'json')
+        except InvalidContentTypeError:
+            _LOGGER.error("Host %s:%s: error translating API response.", self._host, self._port)
+            return False
+        if json_data is None:
+            _LOGGER.error("Host: %s:%s: error obtaining API response.", self._host, self._port)
+            return False
+
+        def check_command_exists(cmd: str) -> bool:
+            for x in json_data:
+                if x["cmd"] == cmd:
+                    return True
+            return False
+
         if self._api_version_getemail >= 1:
-            channel_level_body.append({"cmd": "GetEmailV20", "action": 0, "param": channels_param})
+            if not check_command_exists("GetEmailV20"):
+                self._api_version_getemail = 0
+
         if self._api_version_getpush >= 1:
-            channel_level_body.append({"cmd": "GetPushV20", "action": 0, "param": channels_param})
+            if not check_command_exists("GetPushV20"):
+                self._api_version_getpush = 0
+
         if self._api_version_getftp >= 1:
-            channel_level_body.append({"cmd": "GetFtpV20", "action": 0, "param": channels_param})
+            if not check_command_exists("GetFtpV20"):
+                self._api_version_getftp = 0
+
         if self._api_version_getrec >= 1:
-            channel_level_body.append({"cmd": "GetRecV20", "action": 0, "param": channels_param})
+            if not check_command_exists("GetRecV20"):
+                self._api_version_getrec = 0
+
         if self._api_version_getalarm >= 1:
-            channel_level_body.append({"cmd": "GetAudioAlarmV20", "action": 0, "param": channels_param})
+            if not check_command_exists("GetAudioAlarmV20"):
+                self._api_version_getalarm = 0
 
-        versions_check = True
-        for c in self._channels:
-            channels_param["channel"] = c
-
-            try:
-                json_data = await self.send(channel_level_body, expected_content_type = 'json')
-            except InvalidContentTypeError:
-                _LOGGER.error("Host %s:%s: error translating API response for channel %s.", self._host, self._port, c)
-                return False
-            if json_data is None:
-                _LOGGER.error("Host: %s:%s: error obtaining API response for channel %s.", self._host, self._port, c)
-                return False
-
-            self.map_channel_json_response(json_data, c)
-
-            # Let's assume all channels of an NVR or multichannel-camera always have the same versions of commands... Not sure though...
-            if versions_check:
-                def check_command_exists(cmd: str) -> bool:
-                    for x in json_data:
-                        if x["cmd"] == cmd:
-                            return True
-                    return False
-
-                if self._api_version_getemail >= 1:
-                    if not check_command_exists("GetEmailV20"):
-                        self._api_version_getemail = 0
-
-                if self._api_version_getpush >= 1:
-                    if not check_command_exists("GetPushV20"):
-                        self._api_version_getpush = 0
-
-                if self._api_version_getftp >= 1:
-                    if not check_command_exists("GetFtpV20"):
-                        self._api_version_getftp = 0
-
-                if self._api_version_getrec >= 1:
-                    if not check_command_exists("GetRecV20"):
-                        self._api_version_getrec = 0
-
-                if self._api_version_getalarm >= 1:
-                    if not check_command_exists("GetAudioAlarmV20"):
-                        self._api_version_getalarm = 0
-
-                versions_check = False
+        self.map_channels_json_response(json_data[versions_block_len:], channels[versions_block_len:])
 
         return True
     #endof get_host_data()
@@ -1055,6 +1077,40 @@ class Host:
 
         return None if self._motion_detection_states is None or channel not in self._motion_detection_states or self._motion_detection_states[channel] is None else self._motion_detection_states[channel]
     #endof get_all_motion_states()
+
+
+    async def get_all_motion_states_all_channels(self) -> bool:
+        """Fetch All motions states of all channels at once (regular + AI)."""
+        channels_param = {"channel": 0}
+        ch_body = [{"cmd": "GetMdState", "action": 0, "param": channels_param},
+                   {"cmd": "GetAiState", "action": 0, "param": channels_param}]
+        
+        body        = []
+        channels    = []
+        for channel in self._channels:
+            channels_param["channel"] = channel
+            
+            body.extend(copy.deepcopy(ch_body))
+            channels.extend([channel] * len(ch_body))
+
+        try:
+            json_data = await self.send(body, expected_content_type = 'json')
+        except InvalidContentTypeError as e:
+            _LOGGER.error("Host %s:%s: error translating All Motion States for all channels response: %s", self._host, self._port, e)
+            for channel in self._channels:
+                self._motion_detection_states[channel]  = False
+                self._ai_detection_states[channel]      = None
+            return False
+        if json_data is None:
+            _LOGGER.error("Host %s:%s: error obtaining All Motion States for all channels response.", self._host, self._port)
+            for channel in self._channels:
+                self._motion_detection_states[channel]  = False
+                self._ai_detection_states[channel]      = None
+            return False
+
+        self.map_channels_json_response(json_data, channels)
+        return True
+    #endof get_all_motion_states_all_channels()
 
 
     async def get_snapshot(self, channel: int) -> Optional[list]:
@@ -1180,7 +1236,7 @@ class Host:
     #endof get_vod_source()
 
 
-    def map_host_json_response(self, json_data):
+    def map_host_json_response(self, json_data: list[dict]):
         """Map the JSON objects to internal cache-objects."""
         for data in json_data:
             try:
@@ -1339,33 +1395,47 @@ class Host:
                         self._api_version_getalarm = 1
 
             except Exception as e:  # pylint: disable=bare-except
-                _LOGGER.error("Host %s:%s failed mapping JSON data: %s, traceback:\n%s\n", self._host, self._port, e, traceback.format_exc())
+                _LOGGER.error("Host %s:%s: failed mapping JSON data: %s, traceback:\n%s\n", self._host, self._port, e, traceback.format_exc())
                 continue
     #endof map_host_json_response()
 
 
-    def map_channel_json_response(self, json_data, channel: int):
+    def map_channels_json_response(self, json_data: list[dict], channels: list[int]):
+        if len(json_data) != len(channels):
+            _LOGGER.error("Host %s:%s: error mapping response to channels, received %i responses while requesting %i.", self._host, self._port, len(json_data), len(channels))
+            return
+
+        for data, channel in zip(json_data, channels):
+            self.map_channel_json_response([data], channel)
+    #endof map_channels_json_response()
+
+
+    def map_channel_json_response(self, json_data: list[dict], channel: int):
         """Map the JSON objects to internal cache-objects."""
+        
         for data in json_data:
+            # Just to keep tracking Reolink API mess and bugs.
+            # Can't use this var so far, as not all command-responses consistently return proper "channel" attribute or its value.
+            # Keep relying on "channel" parameter of this method, and pray their devices would never mess up the matching sequence of commands/responses.
+            response_channel = -1
+        
             try:
-                if data["code"] == 1:  # -->Error, like "ability error"
+                if data["code"] == 1:  #Error, like "ability error"
                     continue
 
                 if data["cmd"] == "GetMdState":
+                    # No "channel" property returned here.
+                    #response_channel = data["value"]["channel"]
                     self._motion_detection_states[channel] = data["value"]["state"] == 1
 
                 elif data["cmd"] == "GetAiState":
                     self._is_ia_enabled[channel] = True
                     self._ai_detection_states[channel]  = {}
                     self._ai_detection_support[channel] = {}
-                    found_channel = False
                     for key, value in data["value"].items():
-                        if not found_channel and key == "channel" and value == channel:
-                            found_channel = True
+                        if key == "channel" and value == channel:
+                            response_channel = value
                             continue
-                        if key == "channel" and value > channel:
-                            break
-
                         if isinstance(value, int):  # compatibility with firmware < 3.0.0-494
                             self._ai_detection_states[channel][key] = value == 1
                             self._ai_detection_support[channel][key] = True
@@ -1397,48 +1467,60 @@ class Host:
                             self._ai_detection_support[channel][key] = supported
 
                 elif data["cmd"] == "GetOsd":
+                    response_channel = data["value"]["Osd"]["channel"]
                     self._osd_settings[channel] = data["value"]
                     if not self._GetChannelStatus_present or not self._GetChannelStatus_has_name:
                         self._channel_names[channel] = data["value"]["Osd"]["osdChannel"]["name"]
 
                 elif data["cmd"] == "GetFtp":
+                    response_channel = data["value"]["Ftp"]["schedule"]["channel"]
                     self._ftp_settings[channel] = data["value"]
                     self._ftp_enabled[channel] = data["value"]["Ftp"]["schedule"]["enable"] == 1
 
                 elif data["cmd"] == "GetFtpV20":
+                    response_channel = data["value"]["Ftp"]["schedule"]["channel"]
                     self._ftp_settings[channel] = data["value"]
                     self._ftp_enabled[channel] = data["value"]["Ftp"]["enable"] == 1
 
                 elif data["cmd"] == "GetPush":
+                    response_channel = data["value"]["Push"]["schedule"]["channel"]
                     self._push_settings[channel] = data["value"]
                     self._push_enabled[channel] = data["value"]["Push"]["schedule"]["enable"] == 1
 
                 elif data["cmd"] == "GetPushV20":
+                    response_channel = data["value"]["Push"]["schedule"]["channel"]
                     self._push_settings[channel] = data["value"]
                     self._push_enabled[channel] = data["value"]["Push"]["enable"] == 1
 
                 elif data["cmd"] == "GetEnc":
+                    response_channel = data["value"]["Enc"]["channel"]
                     self._enc_settings[channel] = data["value"]
                     self._audio_enabled[channel] = data["value"]["Enc"]["audio"] == 1
 
                 elif data["cmd"] == "GetEmail":
+                    response_channel = data["value"]["Email"]["schedule"]["channel"]
                     self._email_settings[channel] = data["value"]
                     self._email_enabled[channel] = data["value"]["Email"]["schedule"]["enable"] == 1
 
                 elif data["cmd"] == "GetEmailV20":
+                    response_channel = data["value"]["Email"]["schedule"]["channel"]
                     self._email_settings[channel] = data["value"]
                     self._email_enabled[channel] = data["value"]["Email"]["enable"] == 1
 
                 elif data["cmd"] == "GetIsp":
+                    response_channel = data["value"]['Isp']["channel"]
                     self._isp_settings[channel] = data["value"]
                     self._daynight_state[channel] = data["value"]["Isp"]["dayNight"]
                     self._backlight_state[channel] = data["value"]["Isp"]["backLight"]
 
                 elif data["cmd"] == "GetIrLights":
+                    # No "channel" property returned here.
                     self._ir_settings[channel] = data["value"]
                     self._ir_enabled[channel] = data["value"]["IrLights"]["state"] == "Auto"
 
                 elif data["cmd"] == "GetPowerLed":
+                    # Another BUG in Reolink API: the "channel" is always returned as "0" (at least on my RLN8-410).
+                    #response_channel = data["value"]["PowerLed"]["channel"]
                     self._power_led_settings[channel] = data["value"]
                     val = data["value"]["PowerLed"].get("state", None)
                     if val is not None:
@@ -1448,15 +1530,18 @@ class Host:
                         self._doorbell_light_enabled[channel] = val == "On"
 
                 elif data["cmd"] == "GetWhiteLed":
+                    response_channel = data["value"]["WhiteLed"]["channel"]
                     self._whiteled_settings[channel] = data["value"]
                     self._whiteled_enabled[channel] = data["value"]["WhiteLed"]["state"] == 1
                     self._whiteled_modes[channel] = data["value"]["WhiteLed"]["mode"]
 
                 elif data["cmd"] == "GetRec":
+                    response_channel = data["value"]["Rec"]["schedule"]["channel"]
                     self._recording_settings[channel] = data["value"]
                     self._recording_enabled[channel] = data["value"]["Rec"]["schedule"]["enable"] == 1
 
                 elif data["cmd"] == "GetRecV20":
+                    response_channel = data["value"]["Rec"]["schedule"]["channel"]
                     self._recording_settings[channel] = data["value"]
                     self._recording_enabled[channel] = data["value"]["Rec"]["enable"] == 1
 
@@ -1464,34 +1549,46 @@ class Host:
                     self._ptz_presets_settings[channel] = data["value"]
                     self._ptz_presets[channel] = {}
                     for preset in data["value"]["PtzPreset"]:
+                        response_channel = preset["channel"]
                         if int(preset["enable"]) == 1:
                             preset_name = preset["name"]
                             preset_id = int(preset["id"])
                             self._ptz_presets[channel][preset_name] = preset_id
 
                 elif data["cmd"] == "GetAlarm":
+                    # Don't have a supporting camera to test this command.
+                    #response_channel = data["value"]["Alarm"]["schedule"]["channel"]
                     self._alarm_settings[channel] = data["value"]
                     self._motion_detection_states[channel] = data["value"]["Alarm"]["enable"] == 1
                     self._sensitivity_presets[channel] = data["value"]["Alarm"]["sens"]
 
                 elif data["cmd"] == "GetAudioAlarm":
+                    response_channel = data["value"]["Audio"]["schedule"]["channel"]
                     self._audio_alarm_settings[channel] = data["value"]
                     self._audio_alarm_enabled[channel] = data["value"]["Audio"]["schedule"]["enable"] == 1
 
                 elif data["cmd"] == "GetAudioAlarmV20":
+                    response_channel = data["value"]["Audio"]["schedule"]["channel"]
                     self._audio_alarm_settings[channel] = data["value"]
                     self._audio_alarm_enabled[channel] = data["value"]["Audio"]["enable"] == 1
 
                 elif data["cmd"] == "GetAutoFocus":
+                    # Don't have a supporting camera to test this command.
+                    #response_channel = data["value"]["channel"]
                     self._auto_focus_settings[channel] = data["value"]
 
                 elif data["cmd"] == "GetZoomFocus":
+                    response_channel = data["value"]["ZoomFocus"]["channel"]
                     self._zoom_focus_settings[channel] = data["value"]
+
+                if _LOGGER.level >= logging.DEBUG and response_channel >= 0 and response_channel != channel:
+                    _LOGGER.error("Host %s:%s: command %s response for requested channel %s returned data for channel %s. Maybe response-blocks are displaced from the initial command-blocks order.", self._host, self._port, data["cmd"], channel, response_channel)
 
             except Exception as e:
                 _LOGGER.error("Host %s:%s (channel %s) failed mapping JSON data: %s, traceback:\n%s\n", self._host, self._port, channel, e, traceback.format_exc())
                 continue
     #endof map_channel_json_response()
+
 
     async def set_net_port(self, enable_onvif: bool = None, enable_rtmp: bool = None, enable_rtsp: bool = None) -> bool:
         """Set Network Port parameters on the host (NVR or camera)."""
@@ -1513,6 +1610,7 @@ class Host:
         
         return response
     #endof set_net_port()
+
 
     async def set_time(self, dateFmt = None, hours24 = None, tzOffset = None) -> bool:
         """Set time on the host (NVR or camera)."""
@@ -1666,7 +1764,7 @@ class Host:
             return False
 
         return self._zoom_focus_settings[channel]["ZoomFocus"]["zoom"]["pos"]
-    #enfof get_zoom()
+    #endof get_zoom()
 
 
     async def set_zoom(self, channel: int, zoom) -> bool:
@@ -1997,7 +2095,7 @@ class Host:
             body = [{"cmd": "SetAudioAlarmV20", "param": {"Audio": {"enable": 1 if enable else 0, "channel": channel}}}]
 
         return await self.send_setting(body)
-    #enfof set_audio_alarm()
+    #endof set_audio_alarm()
 
 
     async def set_siren(self, channel: int, enable: bool) -> bool:
