@@ -1,6 +1,6 @@
 [project]
 name            = "reolink-ip"
-version         = "0.0.48"
+version         = "0.0.49"
 description     = "Reolink IP NVR/camera API"
 readme          = "README.md"
 license         = { file="LICENSE" }

@@ -1431,14 +1431,14 @@ class Host:
             # Just to keep tracking Reolink API mess and bugs.
             # Can't use this var so far, as not all command-responses consistently return proper "channel" attribute or its value.
             # Keep relying on "channel" parameter of this method, and pray their devices would never mess up the matching sequence of commands/responses.
-            response_channel = -1
+            #response_channel = -1
         
             try:
                 if data["code"] == 1:  #Error, like "ability error"
                     continue
 
                 if data["cmd"] == "GetEvents":
-                    response_channel = data["value"]["channel"]
+                    #response_channel = data["value"]["channel"]
                     if "ai" in data["value"]:
                         self._is_ia_enabled[channel]        = True
                         self._ai_detection_states[channel]  = {}
@@ -1467,7 +1467,7 @@ class Host:
                     self._ai_detection_support[channel] = {}
                     for key, value in data["value"].items():
                         if key == "channel" and value == channel:
-                            response_channel = value
+                            #response_channel = value
                             continue
                         if isinstance(value, int):  # compatibility with firmware < 3.0.0-494
                             self._ai_detection_states[channel][key] = value == 1
@@ -1500,48 +1500,48 @@ class Host:
                             self._ai_detection_support[channel][key] = supported
 
                 elif data["cmd"] == "GetOsd":
-                    response_channel = data["value"]["Osd"]["channel"]
+                    #response_channel = data["value"]["Osd"]["channel"]
                     self._osd_settings[channel] = data["value"]
                     if not self._GetChannelStatus_present or not self._GetChannelStatus_has_name:
                         self._channel_names[channel] = data["value"]["Osd"]["osdChannel"]["name"]
 
                 elif data["cmd"] == "GetFtp":
-                    response_channel = data["value"]["Ftp"]["schedule"]["channel"]
+                    #response_channel = data["value"]["Ftp"]["schedule"]["channel"]
                     self._ftp_settings[channel] = data["value"]
                     self._ftp_enabled[channel] = data["value"]["Ftp"]["schedule"]["enable"] == 1
 
                 elif data["cmd"] == "GetFtpV20":
-                    response_channel = data["value"]["Ftp"]["schedule"]["channel"]
+                    #response_channel = data["value"]["Ftp"]["schedule"]["channel"]
                     self._ftp_settings[channel] = data["value"]
                     self._ftp_enabled[channel] = data["value"]["Ftp"]["enable"] == 1
 
                 elif data["cmd"] == "GetPush":
-                    response_channel = data["value"]["Push"]["schedule"]["channel"]
+                    #response_channel = data["value"]["Push"]["schedule"]["channel"]
                     self._push_settings[channel] = data["value"]
                     self._push_enabled[channel] = data["value"]["Push"]["schedule"]["enable"] == 1
 
                 elif data["cmd"] == "GetPushV20":
-                    response_channel = data["value"]["Push"]["schedule"]["channel"]
+                    #response_channel = data["value"]["Push"]["schedule"]["channel"]
                     self._push_settings[channel] = data["value"]
                     self._push_enabled[channel] = data["value"]["Push"]["enable"] == 1
 
                 elif data["cmd"] == "GetEnc":
-                    response_channel = data["value"]["Enc"]["channel"]
+                    #response_channel = data["value"]["Enc"]["channel"]
                     self._enc_settings[channel] = data["value"]
                     self._audio_enabled[channel] = data["value"]["Enc"]["audio"] == 1
 
                 elif data["cmd"] == "GetEmail":
-                    response_channel = data["value"]["Email"]["schedule"]["channel"]
+                    #response_channel = data["value"]["Email"]["schedule"]["channel"]
                     self._email_settings[channel] = data["value"]
                     self._email_enabled[channel] = data["value"]["Email"]["schedule"]["enable"] == 1
 
                 elif data["cmd"] == "GetEmailV20":
-                    response_channel = data["value"]["Email"]["schedule"]["channel"]
+                    #response_channel = data["value"]["Email"]["schedule"]["channel"]
                     self._email_settings[channel] = data["value"]
                     self._email_enabled[channel] = data["value"]["Email"]["enable"] == 1
 
                 elif data["cmd"] == "GetIsp":
-                    response_channel = data["value"]['Isp']["channel"]
+                    #response_channel = data["value"]['Isp']["channel"]
                     self._isp_settings[channel] = data["value"]
                     self._daynight_state[channel] = data["value"]["Isp"]["dayNight"]
                     self._backlight_state[channel] = data["value"]["Isp"]["backLight"]
@@ -1563,18 +1563,18 @@ class Host:
                         self._doorbell_light_enabled[channel] = val == "On"
 
                 elif data["cmd"] == "GetWhiteLed":
-                    response_channel = data["value"]["WhiteLed"]["channel"]
+                    #response_channel = data["value"]["WhiteLed"]["channel"]
                     self._whiteled_settings[channel] = data["value"]
                     self._whiteled_enabled[channel] = data["value"]["WhiteLed"]["state"] == 1
                     self._whiteled_modes[channel] = data["value"]["WhiteLed"]["mode"]
 
                 elif data["cmd"] == "GetRec":
-                    response_channel = data["value"]["Rec"]["schedule"]["channel"]
+                    #response_channel = data["value"]["Rec"]["schedule"]["channel"]
                     self._recording_settings[channel] = data["value"]
                     self._recording_enabled[channel] = data["value"]["Rec"]["schedule"]["enable"] == 1
 
                 elif data["cmd"] == "GetRecV20":
-                    response_channel = data["value"]["Rec"]["schedule"]["channel"]
+                    #response_channel = data["value"]["Rec"]["schedule"]["channel"]
                     self._recording_settings[channel] = data["value"]
                     self._recording_enabled[channel] = data["value"]["Rec"]["enable"] == 1
 
@@ -1582,7 +1582,7 @@ class Host:
                     self._ptz_presets_settings[channel] = data["value"]
                     self._ptz_presets[channel] = {}
                     for preset in data["value"]["PtzPreset"]:
-                        response_channel = preset["channel"]
+                        #response_channel = preset["channel"]
                         if int(preset["enable"]) == 1:
                             preset_name = preset["name"]
                             preset_id = int(preset["id"])
@@ -1596,12 +1596,12 @@ class Host:
                     self._sensitivity_presets[channel] = data["value"]["Alarm"]["sens"]
 
                 elif data["cmd"] == "GetAudioAlarm":
-                    response_channel = data["value"]["Audio"]["schedule"]["channel"]
+                    #response_channel = data["value"]["Audio"]["schedule"]["channel"]
                     self._audio_alarm_settings[channel] = data["value"]
                     self._audio_alarm_enabled[channel] = data["value"]["Audio"]["schedule"]["enable"] == 1
 
                 elif data["cmd"] == "GetAudioAlarmV20":
-                    response_channel = data["value"]["Audio"]["schedule"]["channel"]
+                    #response_channel = data["value"]["Audio"]["schedule"]["channel"]
                     self._audio_alarm_settings[channel] = data["value"]
                     self._audio_alarm_enabled[channel] = data["value"]["Audio"]["enable"] == 1
 
@@ -1611,11 +1611,11 @@ class Host:
                     self._auto_focus_settings[channel] = data["value"]
 
                 elif data["cmd"] == "GetZoomFocus":
-                    response_channel = data["value"]["ZoomFocus"]["channel"]
+                    #response_channel = data["value"]["ZoomFocus"]["channel"]
                     self._zoom_focus_settings[channel] = data["value"]
 
-                if _LOGGER.level >= logging.DEBUG and response_channel >= 0 and response_channel != channel:
-                    _LOGGER.error("Host %s:%s: command %s response for requested channel %s returned data for channel %s. Maybe response-blocks are displaced from the initial command-blocks order.", self._host, self._port, data["cmd"], channel, response_channel)
+                # if _LOGGER.level >= logging.DEBUG and response_channel >= 0 and response_channel != channel:
+                #     _LOGGER.error("Host %s:%s: command %s response for requested channel %s returned data for channel %s. Maybe response-blocks are displaced from the initial command-blocks order.", self._host, self._port, data["cmd"], channel, response_channel)
 
             except Exception as e:
                 _LOGGER.error("Host %s:%s (channel %s) failed mapping JSON data: %s, traceback:\n%s\n", self._host, self._port, channel, e, traceback.format_exc())
